@@ -162,6 +162,13 @@ async function submitAction() {
     tg.HapticFeedback.notificationOccurred('error'); return alert('أدخل مبلغاً صحيحاً!');
   }
   tg.HapticFeedback.impactOccurred('medium');
+  
+  const btn = document.getElementById('submit-action-btn');
+  const originalText = btn.innerText;
+  btn.innerText = 'جاري التحميل...';
+  btn.style.opacity = '0.7';
+  btn.disabled = true;
+
   let newBal = currentAction === 'add' ? currentBalance + amount : currentBalance - amount;
   
   const newTransaction = { type: currentAction, amount: amount, date: new Date().toISOString() };
@@ -169,6 +176,10 @@ async function submitAction() {
   const updatedHistory = [...(customer.history || []), newTransaction];
 
   const { error } = await supabase.from('customers').update({ balance: newBal, history: updatedHistory }).eq('id', currentDocId);
+
+  btn.innerText = originalText;
+  btn.style.opacity = '1';
+  btn.disabled = false;
 
   if (error) {
     alert("خطأ: " + error.message);
@@ -220,20 +231,36 @@ function openAddCustomerSheet() {
 }
 
 async function submitNewCustomer() {
-  const name = document.getElementById('cust-name').value;
-  const phone = document.getElementById('cust-phone').value;
+  const nameInput = document.getElementById('cust-name');
+  const phoneInput = document.getElementById('cust-phone');
+  const name = nameInput.value;
+  const phone = phoneInput.value;
+  
   if (!name || !phone) {
     tg.HapticFeedback.notificationOccurred('error'); return alert('الرجاء كتابة الاسم والرقم!');
   }
   tg.HapticFeedback.impactOccurred('medium');
   
+  const btn = document.querySelector('#customer-sheet .btn-submit');
+  const originalText = btn.innerText;
+  btn.innerText = 'جاري التحميل...';
+  btn.style.opacity = '0.7';
+  btn.disabled = true;
+
   const { error } = await supabase.from('customers').insert([{ name: name, phone: phone, balance: 0, history: [] }]);
+
+  btn.innerText = originalText;
+  btn.style.opacity = '1';
+  btn.disabled = false;
 
   if (error) {
     alert("خطأ: " + error.message);
   } else {
     tg.HapticFeedback.notificationOccurred('success');
-    closeSheet();
+    // تصفير الحقول فقط والبقاء في نفس النافذة لإضافة شخص آخر
+    nameInput.value = '';
+    phoneInput.value = '';
+    nameInput.focus(); // إعادة المؤشر لكتابة اسم جديد
   }
 }
 
