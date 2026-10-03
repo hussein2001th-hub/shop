@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام إدارة الديون</title>
+  
+  <!-- مكتبة التلغرام للتطبيقات المصغرة -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <!-- Tailwind CSS للتصميم -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+    
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background-color: var(--tg-theme-bg-color, #ffffff);
+      color: var(--tg-theme-text-color, #000000);
+      margin: 0;
+      padding: 16px;
+    }
+
+    .card {
+      background-color: var(--tg-theme-secondary-bg-color, #f3f4f6);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .button-primary {
+      background-color: var(--tg-theme-button-color, #2481cc);
+      color: var(--tg-theme-button-text-color, #ffffff);
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    
+    .action-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-right: 5px;
+    }
+    .btn-red { background-color: #fee2e2; color: #ef4444; }
+    .btn-green { background-color: #dcfce3; color: #22c55e; }
+  </style>
+</head>
+<body>
+
+  <div class="text-center mb-6">
+    <h1 class="text-xl font-bold" id="greeting">مرحباً بك!</h1>
+    <p class="text-sm opacity-70">إجمالي الديون في السوق: <span id="total-debt" class="font-bold text-red-500">... جارِ التحميل</span></p>
+  </div>
+
+  <div id="customers-list">
+    <p class="text-center text-sm opacity-50">جارِ جلب البيانات...</p>
+  </div>
+
+  <button class="button-primary" onclick="addNewCustomer()">
+    ➕ إضافة زبون جديد
+  </button>
+
+  <script>
+    // 1. تهيئة التلغرام
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+      document.getElementById('greeting').innerText = 'مرحباً ' + tg.initDataUnsafe.user.first_name + '!';
+    }
+
+    tg.MainButton.setText('إغلاق التطبيق');
+    tg.MainButton.show();
+    tg.MainButton.onClick(() => { tg.close(); });
+
+    // 2. إعدادات Firebase الخاصة بك
+    const firebaseConfig = {
+      apiKey: "AIzaSyDWgACPpexFN4U7g4MtDxzLzP6CjuSwwvs",
+      authDomain: "shopp-29149.firebaseapp.com",
+      projectId: "shopp-29149",
+      storageBucket: "shopp-29149.firebasestorage.app",
+      messagingSenderId: "1149980878",
+      appId: "1:1149980878:web:5863c83796c418c493409f"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 3. قراءة البيانات وعرضها
+    function loadCustomers() {
+      db.collection("customers").onSnapshot((querySnapshot) => {
+        const listDiv = document.getElementById("customers-list");
+        listDiv.innerHTML = "";
+        let totalDebt = 0;
+
+        if (querySnapshot.empty) {
+          listDiv.innerHTML = '<p class="text-center text-sm opacity-50">لا يوجد زبائن حالياً.</p>';
+        }
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          const id = doc.id;
+          totalDebt += data.balance;
+
+          const isDebt = data.balance > 0;
+          const statusText = isDebt ? "عليه" : "خالص";
+          const statusColor = isDebt ? "text-red-500" : "text-green-500";
+
+          listDiv.innerHTML += `
+            <div class="card">
+              <div class="flex justify-between items-center">
+                <div>
+                  <h3 class="font-bold">${data.name}</h3>
+                  <p class="text-xs opacity-70">${data.phone}</p>
+                </div>
+                <div class="text-left">
+                  <span class="block ${statusColor} font-bold text-sm">${data.balance} دينار</span>
+                  <span class="text-xs opacity-70 block">${statusText}</span>
+                </div>
+              </div>
+              <div class="flex mt-3 border-t border-gray-200 pt-3 opacity-90">
+                <button class="action-btn btn-red flex-1" onclick="updateBalance('${id}', ${data.balance}, 'add')">➕ دين جديد</button>
+                <button class="action-btn btn-green flex-1" onclick="updateBalance('${id}', ${data.balance}, 'pay')">➖ تسديد</button>
+              </div>
+            </div>
+          `;
+        });
+
+        document.getElementById("total-debt").innerText = totalDebt + " دينار";
+      });
+    }
+
+    // 4. إضافة زبون جديد
+    function addNewCustomer() {
+      const name = prompt("أدخل اسم الزبون الجديد:");
+      if (!name) return;
+      
+      const phone = prompt("أدخل رقم هاتف الزبون:");
+      if (!phone) return;
+
+      db.collection("customers").add({
+        name: name,
+        phone: phone,
+        balance: 0,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        tg.showAlert("تمت إضافة الزبون بنجاح!");
+      }).catch((error) => {
+        alert("حدث خطأ: " + error.message);
+      });
+    }
+
+    // 5. تحديث رصيد الزبون (دين / تسديد)
+    function updateBalance(docId, currentBalance, action) {
+      let amountStr = prompt(action === 'add' ? "كم مبلغ الدين الجديد؟" : "كم مبلغ التسديد؟");
+      if (!amountStr) return;
+      
+      let amount = parseFloat(amountStr);
+      if (isNaN(amount) || amount <= 0) {
+        alert("الرجاء إدخال مبلغ صحيح!");
+        return;
+      }
+
+      let newBalance = currentBalance;
+      if (action === 'add') {
+        newBalance += amount; // زيادة الدين
+      } else {
+        newBalance -= amount; // إنقاص الدين (التسديد)
+      }
+
+      db.collection("customers").doc(docId).update({
+        balance: newBalance
+      });
+    }
+
+    // تشغيل الدالة عند تحميل الصفحة
+    loadCustomers();
+  </script>
+</body>
+</html>

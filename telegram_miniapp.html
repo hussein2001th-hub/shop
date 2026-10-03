@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام إدارة الديون</title>
+  
+  <!-- مكتبة التلغرام للتطبيقات المصغرة -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <!-- Tailwind CSS للتصميم -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+    
+    body {
+      font-family: 'Tajawal', sans-serif;
+      /* ألوان ديناميكية تتغير حسب ثيم التلغرام الخاص بالمستخدم (ليلي/نهاري) */
+      background-color: var(--tg-theme-bg-color, #ffffff);
+      color: var(--tg-theme-text-color, #000000);
+      margin: 0;
+      padding: 16px;
+    }
+
+    .card {
+      background-color: var(--tg-theme-secondary-bg-color, #f3f4f6);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .button-primary {
+      background-color: var(--tg-theme-button-color, #2481cc);
+      color: var(--tg-theme-button-text-color, #ffffff);
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="text-center mb-6">
+    <h1 class="text-xl font-bold" id="greeting">مرحباً بك!</h1>
+    <p class="text-sm opacity-70">إجمالي الديون في السوق: <span id="total-debt" class="font-bold text-red-500">60,000 دينار</span></p>
+  </div>
+
+  <div id="customers-list">
+    <!-- الزبون الأول -->
+    <div class="card flex justify-between items-center">
+      <div>
+        <h3 class="font-bold">أحمد علي</h3>
+        <p class="text-xs opacity-70">07700000000</p>
+      </div>
+      <div class="text-left">
+        <span class="block text-red-500 font-bold text-sm">15,000 دينار</span>
+        <span class="text-xs opacity-70 block">عليه</span>
+      </div>
+    </div>
+
+    <!-- الزبون الثاني -->
+    <div class="card flex justify-between items-center">
+      <div>
+        <h3 class="font-bold">محمد حسن</h3>
+        <p class="text-xs opacity-70">07800000000</p>
+      </div>
+      <div class="text-left">
+        <span class="block text-green-500 font-bold text-sm">0 دينار</span>
+        <span class="text-xs opacity-70 block">خالص</span>
+      </div>
+    </div>
+
+    <!-- الزبون الثالث -->
+    <div class="card flex justify-between items-center">
+      <div>
+        <h3 class="font-bold">سالم عبدالله</h3>
+        <p class="text-xs opacity-70">07900000000</p>
+      </div>
+      <div class="text-left">
+        <span class="block text-red-500 font-bold text-sm">45,000 دينار</span>
+        <span class="text-xs opacity-70 block">عليه</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="button-primary" onclick="requestNewCustomer()">
+    ➕ إضافة زبون جديد
+  </button>
+
+  <script>
+    // تهيئة تطبيق التلغرام
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // لجعل التطبيق يملأ الشاشة
+    
+    // عرض اسم المستخدم
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+      document.getElementById('greeting').innerText = 'مرحباً ' + tg.initDataUnsafe.user.first_name + '!';
+    }
+
+    // إعداد الزر الرئيسي الخاص بالتلغرام
+    tg.MainButton.setText('إغلاق التطبيق');
+    tg.MainButton.show();
+    tg.MainButton.onClick(() => {
+      tg.close();
+    });
+
+    // دالة للتعامل مع زر الإضافة
+    function requestNewCustomer() {
+      // إرسال بيانات للبوت عبر التلغرام ليقوم بإنشاء زبون جديد
+      tg.sendData("action:add_customer");
+      tg.close(); // نغلق التطبيق ليقوم البوت بالرد في المحادثة
+    }
+  </script>
+
+</body>
+</html>
