@@ -18,8 +18,8 @@ if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
 }
 
 // ================= SUPABASE CONFIG =================
-const SUPABASE_URL = 'https://nncfwhqmpfnmazlgqqgs.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uY2Z3aHFtcGZubWF6bGdxcWdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3NjkzNjUsImV4cCI6MjEwNjM0NTM2NX0.xUmF9OaQn6nVXe9u4FbnOaJezYFnS-7dpTN25G_u5LE';
+const SUPABASE_URL = 'https://seeluejrloeanylsoziy.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Qk2n6skDAtljJ_DGy6Aqww_cEIi6q53';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 function formatMoney(amount) { return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
