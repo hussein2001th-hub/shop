@@ -130,8 +130,9 @@
                 </div>
               </div>
               <div class="flex mt-3 border-t border-gray-200 pt-3 opacity-90">
-                <button class="action-btn btn-red flex-1" onclick="updateBalance('${id}', ${data.balance}, 'add')">➕ دين جديد</button>
+                <button class="action-btn btn-red flex-1" onclick="updateBalance('${id}', ${data.balance}, 'add')">➕ دين</button>
                 <button class="action-btn btn-green flex-1" onclick="updateBalance('${id}', ${data.balance}, 'pay')">➖ تسديد</button>
+                <button class="action-btn flex-1" style="background-color: #25D366; color: white;" onclick="sendWhatsApp('${data.phone}', '${data.name}', ${data.balance})">💬 مطالبة</button>
               </div>
             </div>
           `;
@@ -182,6 +183,24 @@
       db.collection("customers").doc(docId).update({
         balance: newBalance
       });
+    }
+
+    // 6. المطالبة عبر الواتساب
+    function sendWhatsApp(phone, name, balance) {
+      if (balance <= 0) {
+        alert("هذا الزبون ليس عليه ديون للمطالبة بها.");
+        return;
+      }
+      
+      // إزالة الصفر الأول من الرقم وإضافة مفتاح العراق (أو يمكن تعديله حسب الدولة)
+      let formattedPhone = phone;
+      if (phone.startsWith('0')) {
+        formattedPhone = '+964' + phone.substring(1);
+      }
+      
+      const message = `مرحباً ${name}، نود تذكيركم بأن الرصيد المتبقي في الحساب هو ${balance} دينار. شكراً لكم.`;
+      const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+      tg.openLink(url);
     }
 
     // تشغيل الدالة عند تحميل الصفحة
