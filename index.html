@@ -7,8 +7,9 @@
   
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
@@ -173,7 +174,6 @@
 
   <!-- ================= TAB: HOME ================= -->
   <div id="tab-home" class="section active">
-    <!-- Header -->
     <div class="app-header">
       <div class="flex justify-between items-center">
         <h1 class="text-2xl font-bold" id="greeting">دفتر الديون</h1>
@@ -221,6 +221,18 @@
           <option value="$">دولار ($)</option>
           <option value="ريال">ريال</option>
         </select>
+      </div>
+    </div>
+
+    <div class="settings-card mt-4">
+      <h3 class="font-bold text-lg mb-4 text-gray-500">حول التطبيق</h3>
+      <div class="setting-item">
+        <span class="font-medium">الإصدار</span>
+        <span class="opacity-70 text-sm">v3.0 (Supabase)</span>
+      </div>
+      <div class="setting-item">
+        <span class="font-medium">قاعدة البيانات</span>
+        <span class="text-green-500 text-sm font-bold">متصلة (Supabase)</span>
       </div>
     </div>
   </div>
@@ -292,16 +304,10 @@
       document.getElementById('greeting').innerText = 'أهلاً ' + tg.initDataUnsafe.user.first_name;
     }
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDWgACPpexFN4U7g4MtDxzLzP6CjuSwwvs",
-      authDomain: "shopp-29149.firebaseapp.com",
-      projectId: "shopp-29149",
-      storageBucket: "shopp-29149.firebasestorage.app",
-      messagingSenderId: "1149980878",
-      appId: "1:1149980878:web:5863c83796c418c493409f"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    // ================= SUPABASE CONFIG =================
+    const SUPABASE_URL = 'https://nncfwhqmpfnmazlgqqgs.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uY2Z3aHFtcGZubWF6bGdxcWdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3NjkzNjUsImV4cCI6MjEwNjM0NTM2NX0.xUmF9OaQn6nVXe9u4FbnOaJezYFnS-7dpTN25G_u5LE';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     function formatMoney(amount) { return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
     function getInitials(name) { return name.substring(0, 1).toUpperCase(); }
@@ -318,22 +324,33 @@
 
     let allCustomers = [];
 
-    function loadCustomers() {
-      db.collection("customers").orderBy("createdAt", "desc").onSnapshot((querySnapshot) => {
-        allCustomers = [];
-        let totalDebt = 0;
+    async function loadCustomers() {
+      // Realtime subscription setup
+      supabase
+        .channel('public:customers')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, fetchAllCustomers)
+        .subscribe();
         
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          data.id = doc.id;
-          totalDebt += data.balance;
-          allCustomers.push(data);
-        });
+      fetchAllCustomers(); // Initial load
+    }
+
+    async function fetchAllCustomers() {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .order('created_at', { ascending: false });
         
-        document.getElementById("total-debt").innerText = formatMoney(totalDebt);
-        document.getElementById("stats-count").innerText = allCustomers.length;
-        renderCustomers();
-      });
+      if (error) {
+        console.error("Error fetching customers: ", error);
+        return;
+      }
+      
+      allCustomers = data;
+      let totalDebt = data.reduce((sum, c) => sum + parseFloat(c.balance), 0);
+      
+      document.getElementById("total-debt").innerText = formatMoney(totalDebt);
+      document.getElementById("stats-count").innerText = allCustomers.length;
+      renderCustomers();
     }
 
     function renderCustomers() {
@@ -347,7 +364,7 @@
       );
 
       if (filtered.length === 0) {
-        listDiv.innerHTML = `<div class="text-center py-10 opacity-50"><p class="font-bold">لا توجد نتائج</p></div>`;
+        listDiv.innerHTML = `<div class="text-center py-10 opacity-50"><p class="font-bold">لا يوجد بيانات</p></div>`;
         return;
       }
 
@@ -356,10 +373,9 @@
         const statusText = isDebt ? "عليه دين" : "الحساب خالص";
         const statusColor = isDebt ? "var(--danger)" : "var(--success)";
         
-        // Date handling
         let dateString = "غير معروف";
-        if (data.updatedAt) {
-          const d = data.updatedAt.toDate();
+        if (data.updated_at) {
+          const d = new Date(data.updated_at);
           dateString = d.toLocaleDateString('ar-IQ') + ' ' + d.toLocaleTimeString('ar-IQ', {hour: '2-digit', minute:'2-digit'});
         }
 
@@ -424,7 +440,7 @@
 
     function openActionSheet(id, balance, action) {
       tg.HapticFeedback.selectionChanged();
-      currentDocId = id; currentBalance = balance; currentAction = action;
+      currentDocId = id; currentBalance = parseFloat(balance); currentAction = action;
       
       const title = action === 'add' ? '➕ إضافة دين جديد' : '➖ تسديد دفعة من الحساب';
       const btnColor = action === 'add' ? 'var(--danger)' : 'var(--success)';
@@ -438,7 +454,7 @@
       setTimeout(() => document.getElementById('amount-input').focus(), 300);
     }
 
-    function submitAction() {
+    async function submitAction() {
       const amount = parseFloat(document.getElementById('amount-input').value);
       if (isNaN(amount) || amount <= 0) {
         tg.HapticFeedback.notificationOccurred('error'); return alert('أدخل مبلغاً صحيحاً!');
@@ -446,21 +462,29 @@
       tg.HapticFeedback.impactOccurred('medium');
       let newBal = currentAction === 'add' ? currentBalance + amount : currentBalance - amount;
       
-      // Save Transaction to History Array
       const newTransaction = {
         type: currentAction,
         amount: amount,
         date: new Date().toISOString()
       };
 
-      db.collection("customers").doc(currentDocId).update({ 
-        balance: newBal,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        history: firebase.firestore.FieldValue.arrayUnion(newTransaction)
-      }).then(() => {
+      const customer = allCustomers.find(c => c.id === currentDocId);
+      const updatedHistory = [...(customer.history || []), newTransaction];
+
+      const { error } = await supabase
+        .from('customers')
+        .update({ 
+          balance: newBal,
+          history: updatedHistory
+        })
+        .eq('id', currentDocId);
+
+      if (error) {
+        alert("خطأ: " + error.message);
+      } else {
         tg.HapticFeedback.notificationOccurred('success');
         closeSheet();
-      });
+      }
     }
 
     function openHistorySheet(id) {
@@ -474,12 +498,10 @@
       if (!customer.history || customer.history.length === 0) {
         listDiv.innerHTML = '<p class="text-center text-sm opacity-50 py-4">لا يوجد كشف حساب حالياً.</p>';
       } else {
-        // Sort newest first
         const sortedHistory = [...customer.history].sort((a, b) => new Date(b.date) - new Date(a.date));
         
         sortedHistory.forEach(tx => {
           const isAdd = tx.type === 'add';
-          const title = isDebt ? 'إضافة دين' : 'تسديد دفعة';
           const titleText = isAdd ? '➕ دين' : '➖ تسديد';
           const colorClass = isAdd ? 'text-red-500' : 'text-green-500';
           
@@ -509,33 +531,45 @@
       setTimeout(() => document.getElementById('cust-name').focus(), 300);
     }
 
-    function submitNewCustomer() {
+    async function submitNewCustomer() {
       const name = document.getElementById('cust-name').value;
       const phone = document.getElementById('cust-phone').value;
       if (!name || !phone) {
         tg.HapticFeedback.notificationOccurred('error'); return alert('الرجاء كتابة الاسم والرقم!');
       }
       tg.HapticFeedback.impactOccurred('medium');
-      db.collection("customers").add({
-        name: name, phone: phone, balance: 0,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        history: []
-      }).then(() => {
+      
+      const { error } = await supabase
+        .from('customers')
+        .insert([{
+          name: name,
+          phone: phone,
+          balance: 0,
+          history: []
+        }]);
+
+      if (error) {
+        alert("خطأ: " + error.message);
+      } else {
         tg.HapticFeedback.notificationOccurred('success');
         closeSheet();
-      });
+      }
     }
 
-    function deleteCustomer(id, name) {
+    async function deleteCustomer(id, name) {
       tg.HapticFeedback.notificationOccurred('warning');
       const confirmDelete = confirm(`هل أنت متأكد من حذف الزبون "${name}" نهائياً من الدفتر؟`);
       if (confirmDelete) {
-        db.collection("customers").doc(id).delete().then(() => {
+        const { error } = await supabase
+          .from('customers')
+          .delete()
+          .eq('id', id);
+          
+        if (error) {
+          alert("خطأ في الحذف: " + error.message);
+        } else {
           tg.HapticFeedback.notificationOccurred('success');
-        }).catch(err => {
-          alert("خطأ في الحذف: " + err.message);
-        });
+        }
       }
     }
 
