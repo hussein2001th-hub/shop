@@ -1,0 +1,15 @@
+{
+  "name": "دفتر الديون",
+  "short_name": "الديون",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2953/2953363.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
