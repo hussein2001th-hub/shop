@@ -52,12 +52,13 @@ async function fetchAllCustomers() {
     .order('created_at', { ascending: false });
     
   if (error) {
-    console.error("Error fetching customers: ", error);
+    alert("خطأ في جلب البيانات: " + error.message);
+    document.getElementById("customers-list").innerHTML = `<div class="text-center py-10 text-red-500 font-bold">خطأ في الاتصال بقاعدة البيانات</div>`;
     return;
   }
   
-  allCustomers = data;
-  let totalDebt = data.reduce((sum, c) => sum + parseFloat(c.balance), 0);
+  allCustomers = data || [];
+  let totalDebt = allCustomers.reduce((sum, c) => sum + parseFloat(c.balance || 0), 0);
   
   document.getElementById("total-debt").innerText = formatMoney(totalDebt);
   document.getElementById("stats-count").innerText = allCustomers.length;
