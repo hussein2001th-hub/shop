@@ -139,6 +139,7 @@ function closeSheet() {
   document.getElementById('amount-input').value = '';
   document.getElementById('cust-name').value = '';
   document.getElementById('cust-phone').value = '';
+  document.getElementById('cust-initial-debt').value = '';
 }
 
 function openActionSheet(id, balance, action) {
@@ -234,8 +235,11 @@ function openAddCustomerSheet() {
 async function submitNewCustomer() {
   const nameInput = document.getElementById('cust-name');
   const phoneInput = document.getElementById('cust-phone');
+  const debtInput = document.getElementById('cust-initial-debt');
   const name = nameInput.value;
   const phone = phoneInput.value;
+  let initialDebt = parseFloat(debtInput.value);
+  if (isNaN(initialDebt) || initialDebt < 0) initialDebt = 0;
   
   if (!name || !phone) {
     tg.HapticFeedback.notificationOccurred('error'); return alert('الرجاء كتابة الاسم والرقم!');
@@ -248,7 +252,22 @@ async function submitNewCustomer() {
   btn.style.opacity = '0.7';
   btn.disabled = true;
 
-  const { error } = await supabase.from('customers').insert([{ name: name, phone: phone, balance: 0, history: [] }]);
+  // إعداد كشف الحساب إذا كان هناك دين أولي
+  let historyArray = [];
+  if (initialDebt > 0) {
+    historyArray.push({
+      type: 'add',
+      amount: initialDebt,
+      date: new Date().toISOString()
+    });
+  }
+
+  const { error } = await supabase.from('customers').insert([{ 
+    name: name, 
+    phone: phone, 
+    balance: initialDebt, 
+    history: historyArray 
+  }]);
 
   btn.innerText = originalText;
   btn.style.opacity = '1';
@@ -261,6 +280,7 @@ async function submitNewCustomer() {
     // تصفير الحقول فقط والبقاء في نفس النافذة لإضافة شخص آخر
     nameInput.value = '';
     phoneInput.value = '';
+    debtInput.value = '';
     nameInput.focus(); // إعادة المؤشر لكتابة اسم جديد
   }
 }

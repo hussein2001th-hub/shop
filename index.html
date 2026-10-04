@@ -125,7 +125,8 @@
     <h3 class="text-xl font-bold mb-4">إضافة زبون جديد</h3>
     <input type="text" id="cust-name" class="input-field" placeholder="اسم الزبون كاملاً...">
     <input type="tel" id="cust-phone" class="input-field" placeholder="رقم الهاتف (مثل 077...)" inputmode="tel">
-    <button class="btn-submit bg-green-500" onclick="submitNewCustomer()">حفظ الزبون</button>
+    <input type="number" id="cust-initial-debt" class="input-field" placeholder="مبلغ الدين (اختياري)..." inputmode="numeric">
+    <button class="btn-submit bg-green-500 mt-2" onclick="submitNewCustomer()">حفظ الزبون</button>
   </div>
 
   <!-- Bottom Sheet: History (Statement) -->
