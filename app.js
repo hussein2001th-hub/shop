@@ -18,7 +18,7 @@ if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
 }
 
 // ================= SUPABASE CONFIG =================
-const SUPABASE_URL = 'https://seeluejrloeanylsoziy.supabase.co';
+const SUPABASE_URL = 'https://seeiuejrloeanylsoziy.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Qk2n6skDAtljJ_DGy6Aqww_cEIi6q53';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
