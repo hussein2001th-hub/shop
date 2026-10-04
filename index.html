@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3b82f6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2953/2953363.png">
+  <title>نظام إدارة الديون</title>
+  
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+
+    :root {
+      --primary: #3b82f6; 
+      --danger: #ef4444; 
+      --success: #10b981; 
+      --whatsapp: #25D366;
+      --bg: #f3f4f6;
+      --card-bg: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+    }
+
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding-bottom: 80px; 
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .app-header {
+      background-color: var(--card-bg);
+      padding: 20px 16px;
+      border-bottom-left-radius: 24px;
+      border-bottom-right-radius: 24px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      margin-bottom: 15px;
+    }
+
+    .total-debt-card {
+      background: linear-gradient(135deg, var(--primary), #1d4ed8);
+      color: white;
+      border-radius: 20px;
+      padding: 24px;
+      margin-top: 15px;
+      box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .search-container { padding: 0 16px; margin-bottom: 15px; }
+    .search-input {
+      width: 100%; padding: 12px 40px 12px 12px; border-radius: 14px;
+      border: 1px solid rgba(156, 163, 175, 0.3);
+      font-family: inherit; font-size: 15px; outline: none;
+      box-sizing: border-box;
+    }
+
+    .customers-list { display: flex; flex-direction: column; gap: 12px; padding: 0 16px; }
+
+    .customer-card {
+      background-color: var(--card-bg); border-radius: 18px; padding: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+    }
+
+    .btn-group {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+      border-top: 1px dashed rgba(156, 163, 175, 0.3); padding-top: 12px;
+    }
+    .action-btn {
+      flex: 1; min-width: 80px; display: flex; flex-direction: column; align-items: center; 
+      padding: 8px 0; border-radius: 12px; font-size: 12px; font-weight: bold; cursor: pointer; border: none;
+    }
+    .btn-debt { background-color: #fee2e2; color: var(--danger); }
+    .btn-pay { background-color: #d1fae5; color: var(--success); }
+    .btn-history { background-color: #e0e7ff; color: #4f46e5; }
+    .btn-whatsapp { background-color: #dcfce3; color: var(--whatsapp); }
+
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background-color: var(--card-bg); display: flex; justify-content: space-around;
+      padding: 12px 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); z-index: 40;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      color: var(--muted); font-size: 12px; font-weight: bold; cursor: pointer;
+    }
+    .nav-item.active { color: var(--primary); }
+
+    .fab {
+      position: absolute; top: -25px; background: linear-gradient(135deg, #10b981, #059669); color: white;
+      width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4); z-index: 45; cursor: pointer; border: none;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+    .settings-card { background: var(--card-bg); border-radius: 16px; padding: 16px; margin: 16px; }
+
+    .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 50; display: none; }
+    .overlay.active { display: block; }
+    .bottom-sheet {
+      position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg);
+      border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 24px; z-index: 60;
+      transform: translateY(100%); transition: transform 0.3s;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .bottom-sheet.active { transform: translateY(0); }
+
+    .input-field {
+      width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(156, 163, 175, 0.3); 
+      font-family: inherit; font-size: 16px; margin-bottom: 12px; box-sizing: border-box;
+    }
+    .btn-submit { width: 100%; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 16px; color: white; border: none; cursor: pointer; }
+    
+    .text-center { text-align: center; }
+    .font-bold { font-weight: bold; }
+    .text-xl { font-size: 1.25rem; }
+    .mb-4 { margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+
+  <div id="home-section" class="section active">
+    <div class="app-header">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0; font-size: 22px; font-weight: 800;">دفتر الديون</h2>
+      </div>
+      
+      <div class="total-debt-card">
+        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 4px;">إجمالي أموالك في السوق</div>
+        <div style="font-size: 36px; font-weight: 800; display: flex; align-items: baseline; gap: 8px;">
+          <span id="total-debt">0</span>
+          <span style="font-size: 16px; font-weight: 500; opacity: 0.8;">دينار</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-container">
+      <input type="text" id="search-input" class="search-input" placeholder="ابحث عن اسم أو رقم زبون..." onkeyup="renderCustomers()">
+    </div>
+
+    <!-- REMOVED "Loading..." completely -->
+    <div id="customers-list" class="customers-list"></div>
+    
+    <div class="text-center" style="margin-top:30px; font-size: 12px; opacity: 0.5;">
+      ✨ بإشراف حسين اثير
+    </div>
+  </div>
+
+  <div id="settings-section" class="section">
+    <div class="app-header">
+      <h2 style="margin: 0; font-size: 22px; font-weight: 800;">الإعدادات</h2>
+    </div>
+    <div class="settings-card">
+      <div style="padding: 14px 0; border-bottom: 1px solid #eee;">
+        <strong>عدد الزبائن:</strong> <span id="stats-count">0</span>
+      </div>
+      <div style="padding: 14px 0; border-bottom: 1px solid #eee;">
+        <strong>العملة الأساسية:</strong> دينار عراقي
+      </div>
+      <div style="padding: 14px 0; text-align: center; color: var(--muted); font-size: 12px;">
+        تم التطوير بإشراف حسين اثير
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('home')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      <span style="margin-top: 4px;">الرئيسية</span>
+    </div>
+    
+    <div style="position: relative; width: 50px;">
+      <button class="fab" onclick="openAddCustomerSheet()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </button>
+    </div>
+
+    <div class="nav-item" onclick="switchTab('settings')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      <span style="margin-top: 4px;">الإعدادات</span>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="closeSheet()"></div>
+
+  <div class="bottom-sheet" id="action-sheet">
+    <h3 class="text-xl font-bold mb-4" id="sheet-title">تحديث</h3>
+    <input type="number" id="amount-input" class="input-field" placeholder="المبلغ..." inputmode="numeric">
+    <button class="btn-submit" id="submit-action-btn" onclick="submitAction()">حفظ العملية</button>
+  </div>
+
+  <div class="bottom-sheet" id="customer-sheet">
+    <h3 class="text-xl font-bold mb-4">إضافة زبون جديد</h3>
+    <input type="text" id="cust-name" class="input-field" placeholder="اسم الزبون...">
+    <input type="tel" id="cust-phone" class="input-field" placeholder="رقم الهاتف..." inputmode="tel">
+    <input type="number" id="cust-initial-debt" class="input-field" placeholder="مبلغ الدين (اختياري)..." inputmode="numeric">
+    <button class="btn-submit" style="background:#10b981;" onclick="submitNewCustomer()">حفظ الزبون</button>
+  </div>
+
+  <div class="bottom-sheet" id="history-sheet">
+    <h3 class="text-xl font-bold mb-4">كشف حساب <span id="history-name" style="color:var(--primary)"></span></h3>
+    <div id="history-list" style="margin-bottom:15px;"></div>
+    <button class="btn-submit" style="background:#ccc; color:#000;" onclick="closeSheet()">إغلاق</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram ? window.Telegram.WebApp : null;
+    if (tg) { tg.expand(); tg.MainButton.hide(); }
+
+    function haptic(type) { if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred(type); }
+
+    function switchTab(tabId) {
+      if(tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById(tabId + '-section').classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+
+    const SUPABASE_URL = 'https://seeiuejrloeanylsoziy.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_Qk2n6skDAtljJ_DGy6Aqww_cEIi6q53';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let allCustomers = [];
+
+    function formatMoney(amount) { return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+
+    function renderCustomers() {
+      const listDiv = document.getElementById("customers-list");
+      listDiv.innerHTML = "";
+      
+      const searchTerm = document.getElementById("search-input").value.trim().toLowerCase();
+      const filtered = allCustomers.filter(c => c.name.toLowerCase().includes(searchTerm) || c.phone.includes(searchTerm));
+
+      if (filtered.length === 0 && allCustomers.length > 0) {
+        listDiv.innerHTML = `<div class="text-center py-10 opacity-50"><p class="font-bold">لا يوجد نتائج</p></div>`;
+        return;
+      }
+
+      filtered.forEach(data => {
+        let bal = parseFloat(data.balance);
+        let debtStr = formatMoney(bal) + ' دينار';
+        
+        let actions = `
+          <div class="btn-group">
+            <button class="action-btn btn-debt" onclick="openActionSheet('${data.id}', ${bal}, 'add')">تسجيل دين</button>
+            <button class="action-btn btn-pay" onclick="openActionSheet('${data.id}', ${bal}, 'pay')">تسديد</button>
+            <button class="action-btn btn-history" onclick="openHistorySheet('${data.id}')">كشف حساب</button>
+            <button class="action-btn btn-whatsapp" onclick="window.open('https://wa.me/${data.phone.replace(/^0/, '964')}?text=مرحباً ${data.name}، نود تذكيرك بأن الرصيد المتبقي بذمتك هو ${debtStr}', '_blank')">تذكير واتساب</button>
+          </div>
+        `;
+
+        listDiv.innerHTML += `
+          <div class="customer-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <h3 style="margin:0; font-size:18px;">${data.name}</h3>
+                <div style="color:var(--muted); font-size:14px; margin-top:4px;">📞 ${data.phone}</div>
+              </div>
+              <div style="text-align:left;">
+                <div style="font-size:12px; color:var(--muted);">المطلوب</div>
+                <div style="font-weight:bold; font-size:18px; color:${bal > 0 ? 'var(--danger)' : 'var(--success)'}">${debtStr}</div>
+              </div>
+            </div>
+            ${actions}
+          </div>
+        `;
+      });
+    }
+
+    async function fetchAllCustomers() {
+      const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
+      if (error) {
+        alert("خطأ: " + error.message);
+        return;
+      }
+      allCustomers = data || [];
+      let totalDebt = allCustomers.reduce((sum, c) => sum + parseFloat(c.balance || 0), 0);
+      document.getElementById("total-debt").innerText = formatMoney(totalDebt);
+      document.getElementById("stats-count").innerText = allCustomers.length;
+      renderCustomers();
+    }
+
+    async function loadCustomers() {
+      supabase.channel('public:customers').on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, fetchAllCustomers).subscribe();
+      fetchAllCustomers();
+    }
+
+    function closeSheet() {
+      document.getElementById('overlay').classList.remove('active');
+      document.querySelectorAll('.bottom-sheet').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.input-field').forEach(i => i.value = '');
+    }
+
+    let currentDocId = '', currentBalance = 0, currentAction = '';
+    function openActionSheet(id, balance, action) {
+      if(tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+      currentDocId = id; currentBalance = parseFloat(balance); currentAction = action;
+      const title = action === 'add' ? 'تسجيل دين إضافي' : 'تسديد دفعة من الدين';
+      const color = action === 'add' ? 'var(--danger)' : 'var(--success)';
+      document.getElementById('sheet-title').innerText = title;
+      document.getElementById('sheet-title').style.color = color;
+      document.getElementById('submit-action-btn').style.background = color;
+      document.getElementById('overlay').classList.add('active');
+      document.getElementById('action-sheet').classList.add('active');
+    }
+
+    async function submitAction() {
+      const amount = parseFloat(document.getElementById('amount-input').value);
+      if (isNaN(amount) || amount <= 0) { haptic('error'); return alert('مبلغ غير صحيح!'); }
+      haptic('medium');
+      const btn = document.getElementById('submit-action-btn');
+      btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
+
+      let newBal = currentAction === 'add' ? currentBalance + amount : currentBalance - amount;
+      const customer = allCustomers.find(c => c.id === currentDocId);
+      const updatedHistory = [...(customer.history || []), { type: currentAction, amount, date: new Date().toISOString() }];
+
+      const { error } = await supabase.from('customers').update({ balance: newBal, history: updatedHistory }).eq('id', currentDocId);
+      btn.innerText = 'حفظ العملية'; btn.disabled = false;
+      if (error) alert("خطأ: " + error.message); else { haptic('success'); closeSheet(); }
+    }
+
+    function openHistorySheet(id) {
+      if(tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+      const customer = allCustomers.find(c => c.id === id);
+      document.getElementById('history-name').innerText = customer.name;
+      const listDiv = document.getElementById('history-list');
+      listDiv.innerHTML = '';
+      if (!customer.history || customer.history.length === 0) {
+        listDiv.innerHTML = '<p class="text-center text-sm opacity-50 py-4">لا يوجد حركات سابقة.</p>';
+      } else {
+        const sortedHistory = [...customer.history].sort((a, b) => new Date(b.date) - new Date(a.date));
+        sortedHistory.forEach(tx => {
+          const isAdd = tx.type === 'add';
+          const d = new Date(tx.date);
+          listDiv.innerHTML += `
+            <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee;">
+              <div>
+                <div style="font-weight:bold; color:${isAdd ? 'var(--danger)' : 'var(--success)'}">${isAdd ? 'تسجيل دين' : 'تسديد دفعة'}</div>
+                <div style="font-size:11px; color:var(--muted);">${d.toLocaleString('ar-IQ')}</div>
+              </div>
+              <div style="font-weight:bold;">${formatMoney(tx.amount)} دينار</div>
+            </div>`;
+        });
+      }
+      document.getElementById('overlay').classList.add('active');
+      document.getElementById('history-sheet').classList.add('active');
+    }
+
+    function openAddCustomerSheet() {
+      if(tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+      document.getElementById('overlay').classList.add('active');
+      document.getElementById('customer-sheet').classList.add('active');
+    }
+
+    async function submitNewCustomer() {
+      const name = document.getElementById('cust-name').value;
+      const phone = document.getElementById('cust-phone').value;
+      let initialDebt = parseFloat(document.getElementById('cust-initial-debt').value);
+      if (isNaN(initialDebt) || initialDebt < 0) initialDebt = 0;
+      
+      if (!name || !phone) { haptic('error'); return alert('الاسم والرقم مطلوبان!'); }
+      haptic('medium');
+      
+      const btn = document.querySelector('#customer-sheet .btn-submit');
+      btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
+
+      let historyArray = initialDebt > 0 ? [{ type: 'add', amount: initialDebt, date: new Date().toISOString() }] : [];
+      const { error } = await supabase.from('customers').insert([{ name, phone, balance: initialDebt, history: historyArray }]);
+      
+      btn.innerText = 'حفظ الزبون'; btn.disabled = false;
+      if (error) alert("خطأ: " + error.message); else { haptic('success'); closeSheet(); }
+    }
+
+    // Start
+    loadCustomers();
+  </script>
+</body>
+</html>
